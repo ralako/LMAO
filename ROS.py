@@ -59,6 +59,8 @@ class Oblak:
 
         self.zac_rel_oblasti_frame = 0
 
+        self.zac_fitu_A_sigma_cas = np.inf
+
 
         self.casy = np.linspace(0,self.t_fin,num=self.frames_poc)   # Casy od zaciatku rozpinania
         
@@ -132,8 +134,9 @@ class Oblak:
             warnings.simplefilter("error", OptimizeWarning)
             try:
                 popt,pcov = curve_fit(gauss,self.x,self.rho)
+                popt[1] = abs(popt[1])
             except:
-                #print(poc, "neviem nafitovat")
+                print(poc, "neviem nafitovat")
                 self.fitol_som_hustotu = False
                 if self.t > 10:
                     self.ukonci_predcasne(poc)
@@ -144,9 +147,10 @@ class Oblak:
         self.fitol_som_hustotu = True
 
         # zastavi simulaciu ak je nieco nafitovane ako zaporne a zaroven t > 10s
-        if (popt[0] <= 0) or (popt[1] <= 0) or (pcov[0,0] <= 0) or (pcov[1,1] <= 0):
+        if (popt[0] <= 0) or (pcov[0,0] <= 0) or (pcov[1,1] <= 0):
             if self.t > 10:
                 self.ukonci_predcasne(poc)
+                print(poc, "zly fit", popt[0], popt[1], pcov[0,0], pcov[1,1])
                 return True
             
             else:
@@ -209,7 +213,7 @@ class Oblak:
                 self.camera.snap()
 
         if self.video:
-            plt.text(0.6,0.83,"───  relativna hustota $\\rho_r$",transform=self.fig.transFigure)
+            plt.text(0.6,0.83,"───  \\rho_r(x,t)$ (%)$",transform=self.fig.transFigure)
             plt.text(0.6,0.78,"───",c='red',transform=self.fig.transFigure)
             plt.text(0.654,0.78,"fit $\\rho_r$ Gaussianom",transform=self.fig.transFigure)
             self.ani = self.camera.animate(interval=int(1000*self.opakuj_na_frame*self.dt))
@@ -220,24 +224,24 @@ class Oblak:
     def ulozenie(self):
         if self.fituj:
             self.zdrojove_cesty = ["data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+".mp4",
-                            "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_casy.npy",
-                            "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_Acka.npy",
-                            "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_Acka_se.npy",
-                            "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_sigmy.npy",
-                            "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_sigmy_se.npy",
-                            "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_rhos_stred.npy",
-                            "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_parametre.npy"]
+                            "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_casy.npy",
+                            "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_Acka.npy",
+                            "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_Acka_se.npy",
+                            "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_sigmy.npy",
+                            "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_sigmy_se.npy",
+                            "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_rhos_stred.npy",
+                            "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_parametre.npy"]
         else:
-            self.zdrojove_cesty = ["data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+".mp4",
-                                   "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_casy.npy",
-                                   "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_rhos_stred.npy",
-                                   "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_parametre.npy"]
+            self.zdrojove_cesty = ["data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+".mp4",
+                                   "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_casy.npy",
+                                   "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_rhos_stred.npy",
+                                   "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_parametre.npy"]
         
         # vytvorenie priecinkovej struktury
-        if not os.path.exists("data_"+self.rozmery):
-            os.makedirs("data_"+self.rozmery)
-        if not os.path.exists("data_"+self.rozmery+"/"+self.nazov):
-            os.makedirs("data_"+self.rozmery+"/"+self.nazov)
+        if not os.path.exists("data_"+self.rozmery+"_"+str(self.T)+"K"):
+            os.makedirs("data_"+self.rozmery+"_"+str(self.T)+"K")
+        if not os.path.exists("data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov):
+            os.makedirs("data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov)
             
         #ulozenie videa
         if self.video:
@@ -274,7 +278,7 @@ class Oblak:
         plt.ylabel("$x_H$ (cm)")
         
         if self.uloz:
-            plt.savefig("data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_x_H_od_t.png",dpi=300)
+            plt.savefig("data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_x_H_od_t.png",dpi=300)
             plt.close(fig=self.fig3)
         else:
             plt.show()
@@ -288,10 +292,11 @@ class Oblak:
         try:
             frame_poc = np.argmax(self.Acka_se[self.zac_rel_oblasti_frame:] < self.tolerancia_chyby_A)
         except:
-            print("neni relevantna oblast Acka")
+            print("nie je relevantna oblast Acka")
             frame_poc = 0
 
-        if frame_poc == 0 or frame_poc > 0.95 * self.frames_poc:    # nebola cely cas resp. dlho (>95%)
+        hranica_relevantnosti = 0.95
+        if frame_poc == 0 or frame_poc > hranica_relevantnosti * self.frames_poc:    # nebola cely cas resp. dlho (>95%)
             print("fit failed")                                     # dosiahnuta pozadovana presnost na fit
             if self.poc_vysl == self.vysl_poc:
                 print("ale je to ok :)")
@@ -299,9 +304,9 @@ class Oblak:
             plt.plot(self.casy,100*self.rhos_stred,c='black',label=r'$\rho_r$ v strede (%)')
 
             if self.uloz:
-                if os.path.exists("data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_rhos_stred_vysl.npy"):
-                    os.remove("data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_rhos_stred_vysl.npy")
-                np.save("data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_rhos_stred_vysl.npy",
+                if os.path.exists("data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_rhos_stred_vysl.npy"):
+                    os.remove("data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_rhos_stred_vysl.npy")
+                np.save("data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_rhos_stred_vysl.npy",
                         self.rhos_stred_vysl)
             
             return
@@ -332,14 +337,15 @@ class Oblak:
         plt.plot(self.casy,100*self.rhos_stred,c='black',label=r'$\rho_r$ v strede (%)')
         
         # relevantna oblast
-        plt.axvline(x=frame_poc*self.opakuj_na_frame*self.dt,c='black',linestyle='--',lw=1,alpha=.5,
+        self.zac_fitu_A_sigma_cas = frame_poc*self.opakuj_na_frame*self.dt
+        plt.axvline(x=self.zac_fitu_A_sigma_cas,c='black',linestyle='--',lw=1,alpha=.5,
                     label="zaciatok fitu $A$ a $\sigma$")
 
         #ZAPISANIE VYSLEDKOV
         self.Acka_vysl[self.poc_vysl:] = hyperbola(self.casy_vysl[self.poc_vysl:],poptH[0],poptH[1])
         self.sigmy_vysl[self.poc_vysl:] = priamka(self.casy_vysl[self.poc_vysl:],poptL[0],poptL[1])
         self.rhos_stred_vysl[self.poc_vysl:] = self.Acka_vysl[self.poc_vysl:]
-        print(self.poc_vysl)
+        #print(self.poc_vysl)
         # metoda prenosu chyb
         clen1H = 1/(poptH[1]+self.casy_vysl[self.poc_vysl:])
         self.Acka_se_vysl[self.poc_vysl:] = clen1H * np.sqrt(
@@ -349,16 +355,17 @@ class Oblak:
         #ulozenie
         if self.uloz:
             self.zdrojove_cesty_2 = [
-                    "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_casy_vysl.npy",
-                    "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_Acka_vysl.npy",
-                    "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_Acka_se_vysl.npy",
-                    "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_sigmy_vysl.npy",
-                    "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_sigmy_se_vysl.npy",
-                    "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_rhos_stred_vysl.npy",
-                    "data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_konstanty_fitu.npy" ]
+                    "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_casy_vysl.npy",
+                    "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_Acka_vysl.npy",
+                    "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_Acka_se_vysl.npy",
+                    "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_sigmy_vysl.npy",
+                    "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_sigmy_se_vysl.npy",
+                    "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_rhos_stred_vysl.npy",
+                    "data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_konstanty_fitu.npy" ]
             data_ = [self.casy_vysl,self.Acka_vysl,self.Acka_se_vysl,self.sigmy_vysl,self.sigmy_se_vysl,
                      self.rhos_stred_vysl,np.array([[poptH[0],poptH[1],poptL[0],poptL[1]],
-                                                    [perrH[0],perrH[1],perrL[0],perrL[1]]])]
+                                                    [perrH[0],perrH[1],perrL[0],perrL[1]], self.zac_fitu_A_sigma_cas],dtype=object)]
+            
             for i in range(len(data_)):
                 if os.path.exists(self.zdrojove_cesty_2[i]):
                     os.remove(self.zdrojove_cesty_2[i])
@@ -381,7 +388,7 @@ class Oblak:
         plt.xlabel("$t$ (s)")
         
         if self.uloz:
-            plt.savefig("data_"+self.rozmery+"/"+self.nazov+"/"+self.nazov+"_graf.png",dpi=300)
+            plt.savefig("data_"+self.rozmery+"_"+str(self.T)+"K/"+self.nazov+"/"+self.nazov+"_graf.png",dpi=300)
             plt.close(fig=self.fig2)
         else:
             plt.show()
@@ -423,6 +430,9 @@ def hyperbola(t, B, C):
 def priamka(t,slope,intercept):
     return slope*t + intercept
 
+def loglogfit(r,P,Q):
+    return r**P * 10**Q
+
 
 
 
@@ -436,33 +446,68 @@ def round_sig(x, sig=3):
 
 
 
-#COLORMESH GRAF
+#COLORMESH GRAFY a INÉ GRAFY
 
-def colormesh(rozmery,T,poc,fps,co="Acka",smooth=False,uloz=True):
-
-    r_moznosti, mC_moznosti = np.load("vysledky_"+rozmery+"_"+str(T)+"K/config_"+rozmery+"_"+str(T)+"K.npy")
-    r_num = len(r_moznosti)
-    mC_num = len(mC_moznosti)
+def colormesh(rozmery,t,T=200,fps=50,smooth=False,uloz=True):
     
-    rhos_stred_po_t = [[0 for j in range(mC_num)] for i in range(r_num)]
+    poc = t*fps
+    r_moznosti, mC_moznosti = np.load("vysledky_"+rozmery+"_"+str(T)+"K/config_"+rozmery+"_"+str(T)+"K.npy", allow_pickle=True)
+    r_num = r_moznosti.size
+    mC_num = mC_moznosti.size
+    
+    Acka = [[0 for j in range(mC_num)] for i in range(r_num)]
+    rhos_stred = [[0 for j in range(mC_num)] for i in range(r_num)]
+    zac_fitu_A_sigma_cas = [[0 for j in range(mC_num)] for i in range(r_num)]
+    prechodova_oblast = [[0 for j in range(mC_num)] for i in range(r_num)]
+    prechodova_oblast_r = [] ; prechodova_oblast_r_log = []
+    prechodova_oblast_mC = [] ; prechodova_oblast_mC_log = []
     
     for i in range(mC_num):
         for j in range(r_num):
             nazov = "oblak_"+str(round_sig(r_moznosti[j]))+"cm_"+str(round_sig(mC_moznosti[i]))+"kg_"+str(T)+"K"
-            nazov_rhos_stred_vysl = "data_"+rozmery+"_"+str(T)+"K/"+nazov+"/"+nazov+"_"+co+".npy"
+            nazov_rhos_stred = "data_"+rozmery+"_"+str(T)+"K/"+nazov+"/"+nazov+"_rhos_stred_vysl.npy"
+            nazov_Acka = "data_"+rozmery+"_"+str(T)+"K/"+nazov+"/"+nazov+"_Acka.npy"
+            nazov_konstanty_fitu =  "data_"+rozmery+"_"+str(T)+"K/"+nazov+"/"+nazov+"_konstanty_fitu.npy"
             
-            rhos_stred_po_t[i][j] = np.load(nazov_rhos_stred_vysl)[poc]
+            Acka[i][j] = np.load(nazov_Acka)[poc]
+            rhos_stred[i][j] = np.load(nazov_rhos_stred)[t]
+            try:
+                zac_fitu_A_sigma_cas[i][j] = np.load(nazov_konstanty_fitu,allow_pickle=True)[2]
+                #print(zac_fitu_A_sigma_cas[i][j])
+            except:
+                zac_fitu_A_sigma_cas[i][j] = np.inf
+
+            if (zac_fitu_A_sigma_cas[i][j] < 10) and (rhos_stred[i][j] > 0.05):
+                prechodova_oblast[i][j] = 1
+                prechodova_oblast_r.append(r_moznosti[j])
+                prechodova_oblast_r_log.append(np.log10(r_moznosti[j]))
+                prechodova_oblast_mC.append(mC_moznosti[i])
+                prechodova_oblast_mC_log.append(np.log10(mC_moznosti[i]))
+
+                
     
     X,Y = np.meshgrid(np.array(r_moznosti),np.array(mC_moznosti))
-    Z = np.array(rhos_stred_po_t)
-
+    
+    Z_Acka = np.array(Acka)
+    Z_rhos_stred = np.array(rhos_stred)
+    Z_zac_fitu_A_sigma_cas = np.array(zac_fitu_A_sigma_cas)
+    Z_prechodova_oblast = np.array(prechodova_oblast)
+    
     if smooth:
-        levels = np.linspace(0, 1, 256)
+        levels_Acka = np.linspace(0, 1, 256)
+        levels_rhos_stred = np.linspace(0, 1, 256)
+        levels_zac_fitu_A_sigma_cas = np.linspace(0, 1, 256)
+        levels_prechodova_oblast = [0,.5,1]
     else:
-        levels = np.linspace(0, 1, 11)
+        levels_Acka = np.linspace(0, 1, 11)
+        levels_rhos_stred = np.linspace(0, 1, 11)
+        levels_zac_fitu_A_sigma_cas = np.linspace(0, 20, 11)
+        levels_prechodova_oblast = [0,.5,1]
 
+
+    # Acka
     fig, ax = plt.subplots(dpi=300)
-    cs = ax.contourf(X,Y,Z,levels=levels)
+    cs = ax.contourf(X,Y,Z_Acka,levels=levels_Acka)
 
     cbar = fig.colorbar(cs,ticks=[0,0.2,0.4,0.6,0.8,1])
 
@@ -471,18 +516,94 @@ def colormesh(rozmery,T,poc,fps,co="Acka",smooth=False,uloz=True):
 
     plt.xlabel("$r$ (cm)")
     plt.ylabel("$m_C$ (kg)")
-    plt.title("$\\rho_r$ v strede, $t$ = "+str('{:.1f}'.format(round(poc/fps,2)))+" s, $T$ = "+str(T)+"K")
-
-    #plt.text(0.6,0.8,"$t$ = "+str('{:.2f}'.format(round(poc/fps,2)))+" s", transform=fig.transFigure)
+    plt.title("$A(t = $"+str('{:.1f}'.format(round(poc/fps,2)))+" s$)$, $T$ = "+str(T)+"K")
 
     if uloz:
         if smooth:
-            plt.savefig("vysledky_"+rozmery+"_"+str(T)+"K"+"/colormesh_"+rozmery+"_"+str(T)+"K"+"_smooth.png")
+            plt.savefig("vysledky_"+rozmery+"_"+str(T)+"K"+"/Acka_"+rozmery+"_"+str(T)+"K"+"_smooth.png")
         else:
-            plt.savefig("vysledky_"+rozmery+"_"+str(T)+"K"+"/colormesh_"+rozmery+"_"+str(T)+"K"+".png")
+            plt.savefig("vysledky_"+rozmery+"_"+str(T)+"K"+"/Acka_"+rozmery+"_"+str(T)+"K"+".png")
 
     else:
         plt.show()
+
+
+    # Rhos stred
+    fig, ax = plt.subplots(dpi=300)
+    cs = ax.contourf(X,Y,Z_rhos_stred,levels=levels_rhos_stred)
+
+    #print(rhos_stred)
+
+    cbar = fig.colorbar(cs,ticks=[0,0.2,0.4,0.6,0.8,1])
+
+    plt.xscale("log")
+    plt.yscale("log")
+
+    plt.xlabel("$r$ (cm)")
+    plt.ylabel("$m_C$ (kg)")
+    plt.title("$\\rho_r(x = 0$ cm $t = $"+str('{:.1f}'.format(round(poc/fps,2)))+" s$)$, $T$ = "+str(T)+"K")
+    
+    if uloz:
+        if smooth:
+            plt.savefig("vysledky_"+rozmery+"_"+str(T)+"K"+"/Rhos_stred_"+rozmery+"_"+str(T)+"K"+"_smooth.png")
+        else:
+            plt.savefig("vysledky_"+rozmery+"_"+str(T)+"K"+"/Rhos_stred_"+rozmery+"_"+str(T)+"K"+".png")
+
+    else:
+        plt.show()
+
+
+    # zac_fitu_A_sigma_cas
+    fig,ax = plt.subplots(dpi=300)
+    cs = ax.contourf(X,Y,Z_zac_fitu_A_sigma_cas,levels=levels_zac_fitu_A_sigma_cas,cmap='bone')
+
+    cbar = fig.colorbar(cs,ticks=np.linspace(0, 20, 11))
+
+    plt.xscale("log")
+    plt.yscale("log")
+
+    plt.xlabel("$r$ (cm)")
+    plt.ylabel("$m_C$ (kg)")
+    plt.title("zaciatok fitu $A, \sigma$ (s), $T$ = "+str(T)+"K")
+
+    if uloz:
+        if smooth:
+            plt.savefig("vysledky_"+rozmery+"_"+str(T)+"K"+"/zac_fitu_A_sigma_cas_"+rozmery+"_"+str(T)+"K"+"_smooth.png")
+        else:
+            plt.savefig("vysledky_"+rozmery+"_"+str(T)+"K"+"/zac_fitu_A_sigma_cas_"+rozmery+"_"+str(T)+"K"+".png")
+
+    else:
+        plt.show()
+
+
+
+    # Prechodova oblast
+    popt,pcov = curve_fit(priamka, prechodova_oblast_r_log, prechodova_oblast_mC_log)
+    print("Prechodova oblast", popt,pcov)
+    
+    fig,ax = plt.subplots(dpi=300)
+    cs = ax.contourf(X,Y,Z_prechodova_oblast,levels=levels_prechodova_oblast,colors=['white','black'])
+
+    #cbar = fig.colorbar(cs,ticks=[0,1])
+    plt.plot(r_moznosti, loglogfit(r_moznosti,popt[0],popt[1]), c='red', label="lineárny fit prechodovej oblasti v log log škále")
+
+    plt.xscale("log")
+    plt.yscale("log")
+
+    plt.xlabel("$r$ (cm)")
+    plt.ylabel("$m_C$ (kg)")
+    plt.title("Prechodova oblast, $T$ = "+str(T)+"K")
+    plt.legend()
+
+    if uloz:
+        if smooth:
+            plt.savefig("vysledky_"+rozmery+"_"+str(T)+"K"+"/prechodova_oblast_"+rozmery+"_"+str(T)+"K"+"_smooth.png")
+        else:
+            plt.savefig("vysledky_"+rozmery+"_"+str(T)+"K"+"/prechodova_oblast_"+rozmery+"_"+str(T)+"K"+".png")
+
+    else:
+        plt.show()
+
 
 
 
@@ -758,11 +879,11 @@ def colormesh_BD(rozmery,t,T=200,fps=50,smooth=False,uloz=True):
 
     #locator = ticker.LogLocator(base=10)
     if smooth:
-        cs = ax.contourf(X,Y,Z_x_H_r, levels=np.linspace(-2.75, 0, 256), cmap='inferno_r')
+        cs = ax.contourf(X,Y,Z_x_H_r, levels=np.linspace(-2.25, 0, 256), cmap='inferno_r')
     else:
-        cs = ax.contourf(X,Y,Z_x_H_r, levels=np.linspace(-1.75, 0, 8), cmap='inferno_r')
+        cs = ax.contourf(X,Y,Z_x_H_r, levels=np.linspace(-2.25, 0, 10), cmap='inferno_r')
     
-    cbar = fig.colorbar(cs,ticks=np.linspace(-1.5, 0, 4))
+    cbar = fig.colorbar(cs,ticks=np.linspace(-2, 0, 5))
     cbar.ax.invert_yaxis()
 
     plt.xscale("log")
@@ -859,7 +980,7 @@ def colormesh_BD(rozmery,t,T=200,fps=50,smooth=False,uloz=True):
     
     cs1 = ax.contourf(X,Y,Z_x_H, locator=locator, levels=levels_x_H, cmap='inferno')
     cbar1 = fig.colorbar(cs1,format='%.2f',ticks=np.logspace(-2, 2, 5),location='right',
-                         shrink=0.7,anchor=(0,1),label = "$x_H$ (cm) pre $t$ = "+str(t_fin)+" s")
+                         shrink=0.72,anchor=(0,1),label = "$x_H$ (cm) pre $t$ = "+str(t_fin)+" s")
 
     cs2 = ax.contourf(X,Y,Z_t_H,levels=levels_t_H, cmap='copper')
     cbar2 = fig.colorbar(cs2,ticks=np.linspace(0,t_fin, 7), location='bottom', pad=0.13,
